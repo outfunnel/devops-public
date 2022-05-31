@@ -1,0 +1,103 @@
+on:
+  workflow_call:
+
+name: Deploy to Amazon ECR
+env:
+  ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+  SENTRY_ORG: "outfunnel"
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Parse repository name
+      run: echo "REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+
+    - name: Login to Amazon ECR and Outfunnel Registry
+      id: login-ecr-and-registry
+      run: |
+        echo "@outfunnel:registry=https://registry.outfunnel.com/" > .npmrc
+        echo "//registry.outfunnel.com/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+        aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Determine image tag
+      run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
+
+    - name: Set up QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v1
+      with:
+        image: tonistiigi/binfmt:latest
+        platforms: all
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REPOSITORY: ${{ env.REPOSITORY_NAME }}
+      run: |
+        docker buildx build \
+        --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+        --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+        --platform linux/arm64 \
+        --output type=image,push=true .
+
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - uses: actions/checkout@v3
+    - name: Create Sentry release
+      uses: getsentry/action-release@v1
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: "${{ env.SENTRY_ORG }}"
+        SENTRY_PROJECT: ${{ env.REPOSITORY_NAME }}
+      with:
+        environment: live
+
+    - name: Clone deployments repo
+      id: deployment
+      uses: actions/checkout@v3
+      with:
+        repository: outfunnel/deployment
+        ref: master
+        path: ./deployment
+        token: ${{ secrets.PAT }}
+
+    - name: Trigger deployment
+      id: trigger-deployment
+      run: |
+        sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml"
+        cat "./deployment/${{ env.REPOSITORY_NAME }}.yml"
+
+    - name: Push to @outfunnel/deployment
+      uses: dmnemec/copy_file_to_another_repo_action@main
+      env:
+        API_TOKEN_GITHUB: ${{ secrets.PAT }}
+      with:
+        source_file: "./deployment/${{ env.REPOSITORY_NAME }}.yml"
+        destination_repo: "outfunnel/deployment"
+        user_email: "deploy@outfunnel.com"
+        user_name: "Deployment Bot"
+        commit_message: |
+          Deploying ${{ env.REPOSITORY_NAME }}:${{ env.IMAGE_TAG }}
+
+          Triggered by ${{ github.event.head_commit.author.name }}
+          "${{ github.event.head_commit.message }}"
+          https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+        destination_branch: "master"
