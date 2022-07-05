@@ -101,3 +101,16 @@ jobs:
           "${{ github.event.head_commit.message }}"
           https://github.com/${{ github.repository }}/commit/${{ github.sha }}
         destination_branch: "master"
+
+    - name: Post a message to Slack
+      uses: slackapi/slack-github-action@v1.19.0
+      with:
+        payload: |
+          {
+            "channel": "${{ secrets.SLACK_DEPLOY_CHANNEL }}",
+            "username": "GH Action",
+            "text": "${{ github.event.head_commit.author.name }} deployed *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ github.event.head_commit.message }}_",
+            "icon_emoji": ":github:"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
