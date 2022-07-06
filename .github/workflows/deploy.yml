@@ -60,16 +60,6 @@ jobs:
 
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - uses: actions/checkout@v3
-    - name: Create Sentry release
-      uses: getsentry/action-release@v1
-      env:
-        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        SENTRY_ORG: "${{ env.SENTRY_ORG }}"
-        SENTRY_PROJECT: ${{ env.REPOSITORY_NAME }}
-      with:
-        environment: live
-
     - name: Clone deployments repo
       id: deployment
       uses: actions/checkout@v3
@@ -114,3 +104,14 @@ jobs:
           }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - uses: actions/checkout@v3
+    - name: Create Sentry release
+      uses: getsentry/action-release@v1
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: "${{ env.SENTRY_ORG }}"
+        SENTRY_PROJECT: ${{ env.REPOSITORY_NAME }}
+      with:
+        environment: live
+        ignore_empty: true
