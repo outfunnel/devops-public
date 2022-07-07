@@ -25,6 +25,11 @@ jobs:
       run: echo "REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
       shell: bash
 
+    - name: Parse commit title
+      run: |
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        echo "COMMIT_TITLE=${COMMIT_MSG%%$'\n'*}" >> $GITHUB_ENV
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -105,7 +110,7 @@ jobs:
           {
             "channel": "${{ secrets.SLACK_DEPLOY_CHANNEL }}",
             "username": "GH Action",
-            "text": "${{ github.event.head_commit.author.name }} deployed *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ github.event.head_commit.message }}_",
+            "text": "${{ github.event.head_commit.author.name }} deployed *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ env.COMMIT_TITLE }}_",
             "icon_emoji": ":github:"
           }
       env:
