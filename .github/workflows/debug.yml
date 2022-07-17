@@ -1,0 +1,19 @@
+on:
+  workflow_call:
+    inputs:
+      param_one:
+        description: 'Default param'
+        required: false
+        default: false
+        type: boolean
+
+name: Debug GitHub Action
+
+jobs:
+  deploy:
+    name: Debug and test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
