@@ -1,0 +1,31 @@
+on:
+  workflow_call:
+
+name: Run npm test and lint
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Outfunnel Registry
+      run: |
+        echo "@outfunnel:registry=https://registry.outfunnel.com/" > .npmrc
+        echo "//registry.outfunnel.com/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+
+    - name: Read .nvmrc
+      run: echo ::set-output name=NVMRC::$(cat .nvmrc)
+      id: nvm
+
+    - name: Setup node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '${{ steps.nvm.outputs.NVMRC }}'
+
+    - run: npm ci
+    - run: npm run lint --if-present
+    - run: npm test --if-present
