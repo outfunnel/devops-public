@@ -12,6 +12,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - uses: shogo82148/actions-setup-redis@v1
+      with:
+        redis-version: '6.2'
+
     - name: Set up Outfunnel Registry
       run: |
         echo "@outfunnel:registry=https://registry.outfunnel.com/" > .npmrc
