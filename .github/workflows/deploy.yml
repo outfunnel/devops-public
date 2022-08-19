@@ -6,6 +6,11 @@ on:
         required: false
         default: false
         type: boolean
+      skip_deploy:
+        description: 'Do not update deployment repo'
+        required: false
+        default: false
+        type: boolean
 
 name: Deploy to Amazon ECR
 env:
@@ -87,6 +92,7 @@ jobs:
         cat "./deployment/${{ env.REPOSITORY_NAME }}.yml"
 
     - name: Push to @outfunnel/deployment
+      if: ${{ !inputs.skip_deploy }}
       uses: dmnemec/copy_file_to_another_repo_action@main
       env:
         API_TOKEN_GITHUB: ${{ secrets.PAT }}
@@ -104,6 +110,7 @@ jobs:
         destination_branch: "master"
 
     - name: Post a message to Slack
+      if: ${{ !inputs.skip_deploy }}
       uses: slackapi/slack-github-action@v1.19.0
       with:
         payload: |
