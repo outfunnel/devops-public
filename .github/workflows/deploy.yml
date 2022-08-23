@@ -45,8 +45,8 @@ jobs:
     - name: Login to Amazon ECR and Outfunnel Registry
       id: login-ecr-and-registry
       run: |
-        echo "@outfunnel:registry=https://registry.outfunnel.com/" > .npmrc
-        echo "//registry.outfunnel.com/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+        echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
+        echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
         aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     - name: Determine image tag
