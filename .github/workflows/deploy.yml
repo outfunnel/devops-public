@@ -31,6 +31,7 @@ jobs:
       shell: bash
 
     - name: Parse commit title
+      continue-on-error: true # Temp step until backticks and quotes in commit messages are fixed
       run: |
         COMMIT_MSG="${{ github.event.head_commit.message }}"
         echo "COMMIT_TITLE=${COMMIT_MSG%%$'\n'*}" >> $GITHUB_ENV
