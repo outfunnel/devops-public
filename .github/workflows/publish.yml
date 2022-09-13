@@ -33,6 +33,7 @@ jobs:
         node-version: '${{ steps.nvm.outputs.NVMRC }}'
 
     - run: npm ci || npm install
+    - run: npm run build --if-present
 
     - name: Publish the library
       run: npm publish
