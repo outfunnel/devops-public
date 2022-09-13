@@ -1,0 +1,43 @@
+on:
+  workflow_call:
+
+name: Publish and tag npm package
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENVIRONMENT: "production"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Outfunnel Registry
+      run: |
+        echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
+        echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+
+    - name: Read .nvmrc
+      run: echo ::set-output name=NVMRC::$(cat .nvmrc)
+      id: nvm
+
+    - name: Read target version
+      run: echo ::set-output name=VERSION::$(node -p "require('./package.json').version")
+      id: version
+
+    - name: Setup node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '${{ steps.nvm.outputs.NVMRC }}'
+
+    - run: npm ci
+
+    - name: Publish the library
+      run: npm publish
+
+    - name: Push tag to git
+      run: |
+        git tag "v${{ steps.version.outputs.VERSION }}"
+        git push --tags
