@@ -1,20 +1,18 @@
 on:
   workflow_call:
 
-name: Run npm test and lint
+name: Publish and tag npm package
 
 jobs:
-  test:
-    name: Test
+  publish:
+    name: Publish
     runs-on: ubuntu-latest
+    env:
+      NODE_ENVIRONMENT: "production"
 
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-
-    - uses: shogo82148/actions-setup-redis@v1
-      with:
-        redis-version: '6.2'
 
     - name: Set up Outfunnel Registry
       run: |
@@ -25,12 +23,22 @@ jobs:
       run: echo ::set-output name=NVMRC::$(cat .nvmrc)
       id: nvm
 
+    - name: Read target version
+      run: echo ::set-output name=VERSION::$(node -p "require('./package.json').version")
+      id: version
+
     - name: Setup node
       uses: actions/setup-node@v3
       with:
         node-version: '${{ steps.nvm.outputs.NVMRC }}'
 
     - run: npm ci || npm install
-    - run: npm run lint --if-present
     - run: npm run build --if-present
-    - run: npm test --if-present
+
+    - name: Publish the library
+      run: npm publish
+
+    - name: Push tag to git
+      run: |
+        git tag "v${{ steps.version.outputs.VERSION }}"
+        git push --tags
