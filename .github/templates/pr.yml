@@ -1,0 +1,10 @@
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+name: Test the changes
+
+jobs:
+  test:
+    uses: outfunnel/devops-public/.github/workflows/npmtest.yml@master
+    secrets: inherit
