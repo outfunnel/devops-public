@@ -148,7 +148,7 @@ jobs:
           {
             "channel": "${{ secrets.SLACK_DEPLOY_CHANNEL }}",
             "username": "GH Action",
-            "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ env.COMMIT_TITLE }}_",
+            "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ env.COMMIT_TITLE }}_ \n${{ github.event.head_commit.url }}",
             "icon_emoji": ":github:"
           }
       env:
