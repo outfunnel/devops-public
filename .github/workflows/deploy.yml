@@ -139,3 +139,17 @@ jobs:
       with:
         environment: live
         ignore_empty: true
+
+    - name: Post failure message to Slack
+      if: ${{ failure() }}
+      uses: slackapi/slack-github-action@v1.19.0
+      with:
+        payload: |
+          {
+            "channel": "${{ secrets.SLACK_DEPLOY_CHANNEL }}",
+            "username": "GH Action",
+            "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *${{ env.REPOSITORY_NAME }}* to *live*\n_${{ env.COMMIT_TITLE }}_",
+            "icon_emoji": ":github:"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
