@@ -4,7 +4,7 @@ on:
       skip_sentry:
         description: 'Skip Sentry release'
         required: false
-        default: false
+        default: true
         type: boolean
       skip_deploy:
         description: 'Do not update deployment repo'
