@@ -1,0 +1,12 @@
+on:
+  schedule:
+    - cron: "0 8 * * *"
+
+name: Scheduled Dependency Update
+
+jobs:
+  ncu:
+    uses: outfunnel/devops-public/.github/workflows/ncu.yml@master
+    secrets: inherit
+    with:
+      target: "minor"
