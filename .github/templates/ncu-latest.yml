@@ -2,7 +2,7 @@ on:
   schedule:
     - cron: "0 10 1 * *"
 
-name: Scheduled Major Dependency Update
+name: Monthly Major Dependency Update
 
 jobs:
   ncu:
