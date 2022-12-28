@@ -2,7 +2,7 @@ on:
   schedule:
     - cron: "0 8 * * Mon"
 
-name: Scheduled Minor Dependency Update
+name: Weekly Minor Dependency Update
 
 jobs:
   ncu:
