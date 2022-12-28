@@ -2,9 +2,16 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-name: Test the changes
+name: PR checks
 
 jobs:
   test:
     uses: outfunnel/devops-public/.github/workflows/npmtest.yml@master
     secrets: inherit
+
+  assign-author:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: toshimaru/auto-author-assign@v1.6.1
+        with:
+          repo-token: ${{ secrets.PAT }}
