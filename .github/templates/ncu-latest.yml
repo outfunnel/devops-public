@@ -1,12 +1,12 @@
 on:
   schedule:
-    - cron: "0 8 * * Mon"
+    - cron: "0 10 1 * *"
 
-name: Scheduled Minor Dependency Update
+name: Scheduled Major Dependency Update
 
 jobs:
   ncu:
     uses: outfunnel/devops-public/.github/workflows/ncu.yml@master
     secrets: inherit
     with:
-      target: "minor"
+      target: "latest"
