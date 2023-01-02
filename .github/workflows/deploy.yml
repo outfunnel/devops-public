@@ -11,11 +11,11 @@ on:
         required: false
         default: false
         type: boolean
-      helm_deploy:
-        description: 'Deploy with Helm'
+      deploy_type:
+        description: 'Which deployment to use'
         required: false
-        default: false
-        type: boolean
+        default: 'old'
+        type: string
 
 name: Deploy to Amazon ECR
 env:
@@ -103,14 +103,13 @@ jobs:
         path: ./outfunnel-application
         token: ${{ secrets.PAT }}
 
-    - name: Trigger deployment
-      id: trigger-deployment
+    - name: Update version in the yaml file
       run: |
         sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml" || true
         sed -i -Ee "s/value\: (.*?\/$REPOSITORY_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml" || true
 
     - name: Push to @outfunnel/deployment
-      if: ${{ !inputs.skip_deploy }}
+      if: ${{ !inputs.skip_deploy && inputs.deploy_type == 'old' }}
       uses: dmnemec/copy_file_to_another_repo_action@main
       env:
         API_TOKEN_GITHUB: ${{ secrets.PAT }}
@@ -128,7 +127,7 @@ jobs:
         destination_branch: "master"
 
     - name: Push to @outfunnel/outfunnel-application
-      if: ${{ inputs.helm_deploy }}
+      if: ${{ !inputs.skip_deploy && inputs.deploy_type == 'helm' }}
       uses: dmnemec/copy_file_to_another_repo_action@main
       env:
         API_TOKEN_GITHUB: ${{ secrets.PAT }}
