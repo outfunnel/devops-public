@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      helm_deploy:
+        description: 'Deploy with Helm'
+        required: false
+        default: false
+        type: boolean
 
 name: Deploy to Amazon ECR
 env:
@@ -91,11 +96,20 @@ jobs:
         path: ./deployment
         token: ${{ secrets.PAT }}
 
+    - name: Clone outfunnel-application repo
+      id: deployment
+      uses: actions/checkout@v3
+      with:
+        repository: outfunnel/deployment
+        ref: master
+        path: ./outfunnel-application
+        token: ${{ secrets.PAT }}
+
     - name: Trigger deployment
       id: trigger-deployment
       run: |
-        sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml"
-        cat "./deployment/${{ env.REPOSITORY_NAME }}.yml"
+        sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml" || true
+        sed -i -Ee "s/value\: (.*?\/$REPOSITORY_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml" || true
 
     - name: Push to @outfunnel/deployment
       if: ${{ !inputs.skip_deploy }}
@@ -105,6 +119,24 @@ jobs:
       with:
         source_file: "./deployment/${{ env.REPOSITORY_NAME }}.yml"
         destination_repo: "outfunnel/deployment"
+        user_email: "deploy@outfunnel.com"
+        user_name: "Deployment Bot"
+        commit_message: |
+          Deploying ${{ env.REPOSITORY_NAME }}:${{ env.IMAGE_TAG }}
+
+          Triggered by ${{ github.event.head_commit.author.name }}
+          "${{ github.event.head_commit.message }}"
+          https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+        destination_branch: "master"
+
+    - name: Push to @outfunnel/outfunnel-application
+      if: ${{ inputs.helm_deploy }}
+      uses: dmnemec/copy_file_to_another_repo_action@main
+      env:
+        API_TOKEN_GITHUB: ${{ secrets.PAT }}
+      with:
+        source_file: "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml"
+        destination_repo: "outfunnel/outfunnel-application"
         user_email: "deploy@outfunnel.com"
         user_name: "Deployment Bot"
         commit_message: |
