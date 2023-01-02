@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      deploy_type:
+        description: 'Which deployment to use'
+        required: false
+        default: 'old'
+        type: string
 
 name: Deploy to Amazon ECR
 env:
@@ -83,7 +88,6 @@ jobs:
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
     - name: Clone deployments repo
-      id: deployment
       uses: actions/checkout@v3
       with:
         repository: outfunnel/deployment
@@ -91,20 +95,45 @@ jobs:
         path: ./deployment
         token: ${{ secrets.PAT }}
 
-    - name: Trigger deployment
-      id: trigger-deployment
+    - name: Clone outfunnel-application repo
+      uses: actions/checkout@v3
+      with:
+        repository: outfunnel/outfunnel-application
+        ref: master
+        path: ./outfunnel-application
+        token: ${{ secrets.PAT }}
+
+    - name: Update version in the yaml file
       run: |
-        sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml"
-        cat "./deployment/${{ env.REPOSITORY_NAME }}.yml"
+        sed -i -Ee "s/image\: (.*?\/$REPOSITORY_NAME)\:.*/image: \1:$IMAGE_TAG/g" "./deployment/${{ env.REPOSITORY_NAME }}.yml" || true
+        sed -i -Ee "s/value\: (.*?\/$REPOSITORY_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml" || true
 
     - name: Push to @outfunnel/deployment
-      if: ${{ !inputs.skip_deploy }}
+      if: ${{ !inputs.skip_deploy && inputs.deploy_type == 'old' }}
       uses: dmnemec/copy_file_to_another_repo_action@main
       env:
         API_TOKEN_GITHUB: ${{ secrets.PAT }}
       with:
         source_file: "./deployment/${{ env.REPOSITORY_NAME }}.yml"
         destination_repo: "outfunnel/deployment"
+        user_email: "deploy@outfunnel.com"
+        user_name: "Deployment Bot"
+        commit_message: |
+          Deploying ${{ env.REPOSITORY_NAME }}:${{ env.IMAGE_TAG }}
+
+          Triggered by ${{ github.event.head_commit.author.name }}
+          "${{ github.event.head_commit.message }}"
+          https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+        destination_branch: "master"
+
+    - name: Push to @outfunnel/outfunnel-application
+      if: ${{ !inputs.skip_deploy && inputs.deploy_type == 'helm' }}
+      uses: dmnemec/copy_file_to_another_repo_action@main
+      env:
+        API_TOKEN_GITHUB: ${{ secrets.PAT }}
+      with:
+        source_file: "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml"
+        destination_repo: "outfunnel/outfunnel-application"
         user_email: "deploy@outfunnel.com"
         user_name: "Deployment Bot"
         commit_message: |
