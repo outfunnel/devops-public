@@ -88,7 +88,6 @@ jobs:
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
     - name: Clone deployments repo
-      id: deployment
       uses: actions/checkout@v3
       with:
         repository: outfunnel/deployment
@@ -97,10 +96,9 @@ jobs:
         token: ${{ secrets.PAT }}
 
     - name: Clone outfunnel-application repo
-      id: deployment
       uses: actions/checkout@v3
       with:
-        repository: outfunnel/deployment
+        repository: outfunnel/outfunnel-application
         ref: master
         path: ./outfunnel-application
         token: ${{ secrets.PAT }}
