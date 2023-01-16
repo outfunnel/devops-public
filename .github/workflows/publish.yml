@@ -29,7 +29,7 @@ jobs:
     - name: Set up Public npmjs Registry
       if: ${{ inputs.public_registry }}
       run: |
-        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPMJS_REGISTRY_TOKEN }}" >> .npmrc
+        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPMJS_REGISTRY_TOKEN }}" > .npmrc
 
     - name: Read .nvmrc
       run: echo ::set-output name=NVMRC::$(cat .nvmrc)
