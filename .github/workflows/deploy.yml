@@ -14,7 +14,7 @@ on:
       deploy_type:
         description: 'Which deployment to use'
         required: false
-        default: 'old'
+        default: 'helm'
         type: string
 
 name: Deploy to Amazon ECR
