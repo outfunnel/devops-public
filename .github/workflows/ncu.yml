@@ -20,8 +20,8 @@ jobs:
 
       - name: Set up Outfunnel Registry
         run: |
-          echo "@outfunnel:registry=https://${{ vars.OF_REGISTRY_HOST }}/" > .npmrc
-          echo "//${{ vars.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+          echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
+          echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
 
       - name: Read .nvmrc
         run: echo ::set-output name=NVMRC::$(cat .nvmrc)
