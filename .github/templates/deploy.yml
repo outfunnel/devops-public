@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'templates/**'
+      - 'test/**'
+      - '*.yaml'
+      - '*.md'
 
 name: Deploy to Production
 
