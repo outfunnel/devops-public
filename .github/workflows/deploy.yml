@@ -82,15 +82,8 @@ jobs:
 
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Clone deployments repo
-      uses: actions/checkout@v3
-      with:
-        repository: outfunnel/deployment
-        ref: master
-        path: ./deployment
-        token: ${{ secrets.PAT }}
-
     - name: Clone outfunnel-application repo
+      if: ${{ !inputs.skip_deploy }}
       uses: actions/checkout@v3
       with:
         repository: outfunnel/outfunnel-application
@@ -99,6 +92,7 @@ jobs:
         token: ${{ secrets.PAT }}
 
     - name: Update version in the yaml file
+      if: ${{ !inputs.skip_deploy }}
       run: |
         sed -i -Ee "s/value\: (.*?\/$REPOSITORY_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/${{ env.REPOSITORY_NAME }}.yaml"
 
