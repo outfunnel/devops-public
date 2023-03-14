@@ -146,7 +146,7 @@ jobs:
         ignore_empty: true
 
     - name: Post failure message to Slack
-      if: ${{ failure() }}
+      if: ${{ failure() && !inputs.skip_deploy }}
       uses: slackapi/slack-github-action@v1
       with:
         payload: |
