@@ -53,16 +53,23 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
 
-    - name: Login to Amazon ECR and Outfunnel Registry
-      id: login-ecr-and-registry
+    - name: Login to Outfunnel NPM Registry
+      id: login-outfunnel-npm-registry
       run: |
         echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
         echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
-        if [[ "$ECR_REGISTRY" == "public.ecr.aws/"* ]]; then
-          aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-        else
-          aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-        fi
+
+    - name: Login to Amazon ECR private
+      id: login-ecr-public
+      if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
+      run: |
+        aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Login to Amazon ECR private
+      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
+      id: login-ecr-private
+      run: |
+        aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     - name: Determine image tag
       run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
