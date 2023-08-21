@@ -58,7 +58,11 @@ jobs:
       run: |
         echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
         echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
-        aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+        if [[ "$ECR_REGISTRY" == "public.ecr.aws/"* ]]; then
+          aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+        else
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+        fi
 
     - name: Determine image tag
       run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
