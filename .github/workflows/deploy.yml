@@ -66,8 +66,8 @@ jobs:
         aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     - name: Login to Amazon ECR private
-      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
       id: login-ecr-private
+      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
       run: |
         aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
