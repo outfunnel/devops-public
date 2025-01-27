@@ -27,9 +27,9 @@ on:
         type: string
 
 name: Deploy to Amazon ECR
-env:
-  ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
-  SENTRY_ORG: "outfunnel"
+# env:
+#   ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
+#   SENTRY_ORG: "outfunnel"
 
 jobs:
   deploy:
