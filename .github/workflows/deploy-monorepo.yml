@@ -91,98 +91,98 @@ jobs:
       uses: docker/setup-buildx-action@v2
 
 
-    # - name: Loop through apps to deploy
-    #   run: |
-    #     for APP_NAME in ${{ inputs.apps-to-deploy }}; do
-    #       echo "Deploying app: $APP_NAME"
+    - name: Loop through apps to deploy
+      run: |
+        for APP_NAME in ${{ inputs.apps-to-deploy }}; do
+          echo "Deploying app: $APP_NAME"
 
-    #       # Build, tag, and push image to Amazon ECR
-    #       echo "Building Docker image for $APP_NAME..."
-    #       docker buildx build \
-    #         --file ./packages/$APP_NAME/${{ inputs.dockerfile }} \
-    #         ${{ inputs.docker_build_args }} \
-    #         --tag $ECR_REGISTRY/$APP_NAME:$IMAGE_TAG \
-    #         --tag $ECR_REGISTRY/$APP_NAME:latest \
-    #         --platform linux/arm64,linux/amd64 \
-    #         --output type=image,push=true .
+          # Build, tag, and push image to Amazon ECR
+          echo "Building Docker image for $APP_NAME..."
+          docker buildx build \
+            --file ./packages/$APP_NAME/Dockerfile \
+            ${{ inputs.docker_build_args }} \
+            --tag $ECR_REGISTRY/$APP_NAME:$IMAGE_TAG \
+            --tag $ECR_REGISTRY/$APP_NAME:latest \
+            --platform linux/arm64,linux/amd64 \
+            --output type=image,push=true .
           
-    #       echo "::set-output name=image::$ECR_REGISTRY/$APP_NAME:$IMAGE_TAG"
+          echo "::set-output name=image::$ECR_REGISTRY/$APP_NAME:$IMAGE_TAG"
 
-    #       # Clone the outfunnel-application repo
-    #       echo "Cloning outfunnel-application repository..."
-    #       uses: actions/checkout@v3
-    #       with:
-    #         repository: outfunnel/outfunnel-application
-    #         ref: master
-    #         path: ./outfunnel-application
-    #         token: ${{ secrets.PAT }}
+          # # Clone the outfunnel-application repo
+          # echo "Cloning outfunnel-application repository..."
+          # uses: actions/checkout@v3
+          # with:
+          #   repository: outfunnel/outfunnel-application
+          #   ref: master
+          #   path: ./outfunnel-application
+          #   token: ${{ secrets.PAT }}
 
-    #       # Update version in the YAML file for each app
-    #       echo "Updating version in YAML for $APP_NAME..."
-    #       sed -i -Ee "s/value\: (.*?\/$APP_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/$APP_NAME.yaml"
+          # # Update version in the YAML file for each app
+          # echo "Updating version in YAML for $APP_NAME..."
+          # sed -i -Ee "s/value\: (.*?\/$APP_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/$APP_NAME.yaml"
 
-    #       # Push updated YAML to the outfunnel-application repo
-    #       echo "Pushing updated YAML file to the repository..."
-    #       uses: dmnemec/copy_file_to_another_repo_action@main
-    #       env:
-    #         API_TOKEN_GITHUB: ${{ secrets.PAT }}
-    #       with:
-    #         source_file: "./outfunnel-application/$APP_NAME.yaml"
-    #         destination_repo: "outfunnel/outfunnel-application"
-    #         user_email: "deploy@outfunnel.com"
-    #         user_name: "Deployment Bot"
-    #         commit_message: |
-    #           Deploying $APP_NAME:$IMAGE_TAG
+          # # Push updated YAML to the outfunnel-application repo
+          # echo "Pushing updated YAML file to the repository..."
+          # uses: dmnemec/copy_file_to_another_repo_action@main
+          # env:
+          #   API_TOKEN_GITHUB: ${{ secrets.PAT }}
+          # with:
+          #   source_file: "./outfunnel-application/$APP_NAME.yaml"
+          #   destination_repo: "outfunnel/outfunnel-application"
+          #   user_email: "deploy@outfunnel.com"
+          #   user_name: "Deployment Bot"
+          #   commit_message: |
+          #     Deploying $APP_NAME:$IMAGE_TAG
 
-    #           Triggered by ${{ github.event.head_commit.author.name }}
-    #           "${{ github.event.head_commit.message }}"
-    #           https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-    #         destination_branch: "master"
+          #     Triggered by ${{ github.event.head_commit.author.name }}
+          #     "${{ github.event.head_commit.message }}"
+          #     https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+          #   destination_branch: "master"
 
-    #       # Post a message to Slack
-    #       echo "Sending Slack notification for $APP_NAME..."
-    #       uses: slackapi/slack-github-action@v1
-    #       with:
-    #         payload: |
-    #           {
-    #             "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
-    #             "username": "GH Action",
-    #             "text": "${{ github.event.head_commit.author.name }} deployed *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_",
-    #             "icon_emoji": ":github:"
-    #           }
-    #       env:
-    #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # # Post a message to Slack
+          # echo "Sending Slack notification for $APP_NAME..."
+          # uses: slackapi/slack-github-action@v1
+          # with:
+          #   payload: |
+          #     {
+          #       "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
+          #       "username": "GH Action",
+          #       "text": "${{ github.event.head_commit.author.name }} deployed *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_",
+          #       "icon_emoji": ":github:"
+          #     }
+          # env:
+          #   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-    #       # Create Sentry release
-    #       echo "Creating Sentry release for $APP_NAME..."
-    #       if [ "${{ inputs.sentry_release }}" == "true" ]; then
-    #         uses: getsentry/action-release@v1
-    #         env:
-    #           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-    #           SENTRY_ORG: "${{ env.SENTRY_ORG }}"
-    #           SENTRY_PROJECT: $APP_NAME
-    #         with:
-    #           environment: live
-    #           ignore_empty: true
-    #       fi
+          # # Create Sentry release
+          # echo "Creating Sentry release for $APP_NAME..."
+          # if [ "${{ inputs.sentry_release }}" == "true" ]; then
+          #   uses: getsentry/action-release@v1
+          #   env:
+          #     SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          #     SENTRY_ORG: "${{ env.SENTRY_ORG }}"
+          #     SENTRY_PROJECT: $APP_NAME
+          #   with:
+          #     environment: live
+          #     ignore_empty: true
+          # fi
 
-    #       # Post failure message to Slack if deployment fails
-    #       echo "Sending failure Slack notification if needed..."
-    #       if [[ $? -ne 0 ]]; then
-    #         uses: slackapi/slack-github-action@v1
-    #         with:
-    #           payload: |
-    #             {
-    #               "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
-    #               "username": "GH Action",
-    #               "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_ \n${{ github.event.head_commit.url }}",
-    #               "icon_emoji": ":github:"
-    #             }
-    #         env:
-    #           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-    #       fi
-    #     done
-    #   shell: bash
+          # # Post failure message to Slack if deployment fails
+          # echo "Sending failure Slack notification if needed..."
+          # if [[ $? -ne 0 ]]; then
+          #   uses: slackapi/slack-github-action@v1
+          #   with:
+          #     payload: |
+          #       {
+          #         "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
+          #         "username": "GH Action",
+          #         "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_ \n${{ github.event.head_commit.url }}",
+          #         "icon_emoji": ":github:"
+          #       }
+          #   env:
+          #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # fi
+        done
+      shell: bash
 
 
 
