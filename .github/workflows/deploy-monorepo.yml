@@ -106,38 +106,38 @@ jobs:
             --platform linux/arm64,linux/amd64 \
             --output type=image,push=true .
           
-          echo "::set-output name=image::$ECR_REGISTRY/$APP_NAME:$IMAGE_TAG"
+          echo "image=$ECR_REGISTRY/$APP_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-          # # Clone the outfunnel-application repo
-          # echo "Cloning outfunnel-application repository..."
-          # uses: actions/checkout@v3
-          # with:
-          #   repository: outfunnel/outfunnel-application
-          #   ref: master
-          #   path: ./outfunnel-application
-          #   token: ${{ secrets.PAT }}
+          # Clone the outfunnel-application repo
+          echo "Cloning outfunnel-application repository..."
+          uses: actions/checkout@v3
+          with:
+            repository: outfunnel/outfunnel-application
+            ref: master
+            path: ./outfunnel-application
+            token: ${{ secrets.PAT }}
 
-          # # Update version in the YAML file for each app
-          # echo "Updating version in YAML for $APP_NAME..."
-          # sed -i -Ee "s/value\: (.*?\/$APP_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/$APP_NAME.yaml"
+          # Update version in the YAML file for each app
+          echo "Updating version in YAML for $APP_NAME..."
+          sed -i -Ee "s/value\: (.*?\/$APP_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/$APP_NAME.yaml"
 
-          # # Push updated YAML to the outfunnel-application repo
-          # echo "Pushing updated YAML file to the repository..."
-          # uses: dmnemec/copy_file_to_another_repo_action@main
-          # env:
-          #   API_TOKEN_GITHUB: ${{ secrets.PAT }}
-          # with:
-          #   source_file: "./outfunnel-application/$APP_NAME.yaml"
-          #   destination_repo: "outfunnel/outfunnel-application"
-          #   user_email: "deploy@outfunnel.com"
-          #   user_name: "Deployment Bot"
-          #   commit_message: |
-          #     Deploying $APP_NAME:$IMAGE_TAG
+          # Push updated YAML to the outfunnel-application repo
+          echo "Pushing updated YAML file to the repository..."
+          uses: dmnemec/copy_file_to_another_repo_action@main
+          env:
+            API_TOKEN_GITHUB: ${{ secrets.PAT }}
+          with:
+            source_file: "./outfunnel-application/$APP_NAME.yaml"
+            destination_repo: "outfunnel/outfunnel-application"
+            user_email: "deploy@outfunnel.com"
+            user_name: "Deployment Bot"
+            commit_message: |
+              Deploying $APP_NAME:$IMAGE_TAG
 
-          #     Triggered by ${{ github.event.head_commit.author.name }}
-          #     "${{ github.event.head_commit.message }}"
-          #     https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          #   destination_branch: "master"
+              Triggered by ${{ github.event.head_commit.author.name }}
+              "${{ github.event.head_commit.message }}"
+              https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            destination_branch: "master"
 
           # # Post a message to Slack
           # echo "Sending Slack notification for $APP_NAME..."
