@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ inputs.apps-to-deploy }}
+        app: ${{ fromJson(inputs.apps-to-deploy) }}
 
     steps:
     - name: Checkout
