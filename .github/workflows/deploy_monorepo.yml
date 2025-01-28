@@ -40,6 +40,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: show input
+      run: |
+        echo "++++++++++++++++++++++++++++++++++++++++++++++"
+        echo ${{ inputs.app_name }}
+
     - name: Parse commit title
       # toJSON adds surrounding quotes and escapes the ones inside
       # Then surrounding quotes are stripped by sed
