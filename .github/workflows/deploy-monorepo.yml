@@ -35,7 +35,7 @@ jobs:
       - name: Prepare matrix JSON
         id: prepare-matrix
         run: |
-          apps_json=$(echo "${{ inputs.apps-to-deploy }}" | jq -R 'split(" ") | map(select(length > 0))')
+          apps_json=$(echo "${{ inputs.apps-to-deploy }}" | jq -R 'split(" ") | map(select(length > 0))' | jq -c '.')
           echo "Matrix JSON: $apps_json"
           echo "apps=$apps_json" >> $GITHUB_OUTPUT
   
