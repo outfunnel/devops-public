@@ -27,25 +27,12 @@ env:
   SENTRY_ORG: "outfunnel"
 
 jobs:
-  setup-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      apps: ${{ steps.prepare-matrix.outputs.apps }}
-    steps:
-      - name: Prepare matrix JSON
-        id: prepare-matrix
-        run: |
-          apps_json=$(echo "${{ inputs.apps-to-deploy }}" | jq -R 'split(" ") | map(select(length > 0))' | jq -c '.')
-          echo "Matrix JSON: $apps_json"
-          echo "apps=$apps_json" >> $GITHUB_OUTPUT
-  
   deploy:
-    needs: setup-matrix
     name: Deploy
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ needs.setup-matrix.outputs.apps }}
+        app: ${{ inputs.apps-to-deploy }}
 
     steps:
     - name: Checkout
