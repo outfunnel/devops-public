@@ -16,13 +16,8 @@ on:
         required: false
         default: ''
         type: string
-      dockerfile:
-        description: 'Path to the Dockerfile'
-        required: false
-        default: './Dockerfile'
-        type: string
-      app_name:
-        description: 'App name from monorepo'
+      apps-to-deploy:
+        description: 'Apps from monorepo needed to deploy'
         required: true
         type: string
 
@@ -42,8 +37,8 @@ jobs:
 
     - name: show input
       run: |
-        echo "++++++++++++++++++++++++++++++++++++++++++++++"
-        echo ${{ inputs.app_name }}
+        echo "++++++++++++++++++++++++++++++++++++++++++++++ DEBUG"
+        echo ${{ inputs.apps-to-deploy }}
 
     - name: Parse commit title
       # toJSON adds surrounding quotes and escapes the ones inside
