@@ -22,9 +22,9 @@ on:
         type: string
 
 name: Deploy to Amazon ECR
-# env:
-#   ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
-#   SENTRY_ORG: "outfunnel"
+env:
+  ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
+  SENTRY_ORG: "outfunnel"
 
 jobs:
   deploy:
@@ -51,44 +51,142 @@ jobs:
       env:
         COMMIT_MESSAGE: ${{ toJSON(github.event.head_commit.message) }}
 
-    # - name: Configure AWS credentials
-    #   uses: aws-actions/configure-aws-credentials@v1-node16
-    #   with:
-    #     aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ vars.AWS_REGION }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1-node16
+      with:
+        aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
 
-    # - name: Login to Outfunnel NPM Registry
-    #   id: login-outfunnel-npm-registry
+    - name: Login to Outfunnel NPM Registry
+      id: login-outfunnel-npm-registry
+      run: |
+        echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
+        echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+
+    - name: Login to Amazon ECR public
+      id: login-ecr-public
+      if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
+      run: |
+        aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Login to Amazon ECR private
+      id: login-ecr-private
+      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
+      run: |
+        aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Determine image tag
+      run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
+
+    - name: Set up QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v2
+      with:
+        image: tonistiigi/binfmt:latest
+        platforms: all
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v2
+
+
+    # - name: Loop through apps to deploy
     #   run: |
-    #     echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" > .npmrc
-    #     echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+    #     for APP_NAME in ${{ inputs.apps-to-deploy }}; do
+    #       echo "Deploying app: $APP_NAME"
 
-    # - name: Login to Amazon ECR public
-    #   id: login-ecr-public
-    #   if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
-    #   run: |
-    #     aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+    #       # Build, tag, and push image to Amazon ECR
+    #       echo "Building Docker image for $APP_NAME..."
+    #       docker buildx build \
+    #         --file ./packages/$APP_NAME/${{ inputs.dockerfile }} \
+    #         ${{ inputs.docker_build_args }} \
+    #         --tag $ECR_REGISTRY/$APP_NAME:$IMAGE_TAG \
+    #         --tag $ECR_REGISTRY/$APP_NAME:latest \
+    #         --platform linux/arm64,linux/amd64 \
+    #         --output type=image,push=true .
+          
+    #       echo "::set-output name=image::$ECR_REGISTRY/$APP_NAME:$IMAGE_TAG"
 
-    # - name: Login to Amazon ECR private
-    #   id: login-ecr-private
-    #   if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
-    #   run: |
-    #     aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+    #       # Clone the outfunnel-application repo
+    #       echo "Cloning outfunnel-application repository..."
+    #       uses: actions/checkout@v3
+    #       with:
+    #         repository: outfunnel/outfunnel-application
+    #         ref: master
+    #         path: ./outfunnel-application
+    #         token: ${{ secrets.PAT }}
 
-    # - name: Determine image tag
-    #   run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
+    #       # Update version in the YAML file for each app
+    #       echo "Updating version in YAML for $APP_NAME..."
+    #       sed -i -Ee "s/value\: (.*?\/$APP_NAME)\:.*/value: \1:$IMAGE_TAG/g" "./outfunnel-application/$APP_NAME.yaml"
 
-    # - name: Set up QEMU
-    #   id: qemu
-    #   uses: docker/setup-qemu-action@v2
-    #   with:
-    #     image: tonistiigi/binfmt:latest
-    #     platforms: all
+    #       # Push updated YAML to the outfunnel-application repo
+    #       echo "Pushing updated YAML file to the repository..."
+    #       uses: dmnemec/copy_file_to_another_repo_action@main
+    #       env:
+    #         API_TOKEN_GITHUB: ${{ secrets.PAT }}
+    #       with:
+    #         source_file: "./outfunnel-application/$APP_NAME.yaml"
+    #         destination_repo: "outfunnel/outfunnel-application"
+    #         user_email: "deploy@outfunnel.com"
+    #         user_name: "Deployment Bot"
+    #         commit_message: |
+    #           Deploying $APP_NAME:$IMAGE_TAG
 
-    # - name: Set up Docker Buildx
-    #   id: buildx
-    #   uses: docker/setup-buildx-action@v2
+    #           Triggered by ${{ github.event.head_commit.author.name }}
+    #           "${{ github.event.head_commit.message }}"
+    #           https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+    #         destination_branch: "master"
+
+    #       # Post a message to Slack
+    #       echo "Sending Slack notification for $APP_NAME..."
+    #       uses: slackapi/slack-github-action@v1
+    #       with:
+    #         payload: |
+    #           {
+    #             "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
+    #             "username": "GH Action",
+    #             "text": "${{ github.event.head_commit.author.name }} deployed *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_",
+    #             "icon_emoji": ":github:"
+    #           }
+    #       env:
+    #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    #       # Create Sentry release
+    #       echo "Creating Sentry release for $APP_NAME..."
+    #       if [ "${{ inputs.sentry_release }}" == "true" ]; then
+    #         uses: getsentry/action-release@v1
+    #         env:
+    #           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    #           SENTRY_ORG: "${{ env.SENTRY_ORG }}"
+    #           SENTRY_PROJECT: $APP_NAME
+    #         with:
+    #           environment: live
+    #           ignore_empty: true
+    #       fi
+
+    #       # Post failure message to Slack if deployment fails
+    #       echo "Sending failure Slack notification if needed..."
+    #       if [[ $? -ne 0 ]]; then
+    #         uses: slackapi/slack-github-action@v1
+    #         with:
+    #           payload: |
+    #             {
+    #               "channel": "${{ vars.SLACK_DEPLOY_CHANNEL }}",
+    #               "username": "GH Action",
+    #               "text": "<!subteam^SL980R597> ${{ github.event.head_commit.author.name }} failed to deploy *$APP_NAME* to *live*\n_${{ env.COMMIT_TITLE }}_ \n${{ github.event.head_commit.url }}",
+    #               "icon_emoji": ":github:"
+    #             }
+    #         env:
+    #           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    #       fi
+    #     done
+    #   shell: bash
+
+
+
+
 
     # - name: Build, tag, and push image to Amazon ECR
     #   id: build-image
