@@ -21,6 +21,7 @@ name: Deploy to Amazon ECR
 env:
   ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
   SENTRY_ORG: "outfunnel"
+  HUSKY: 0
 
 jobs:
   deploy:

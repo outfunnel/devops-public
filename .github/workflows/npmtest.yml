@@ -2,6 +2,8 @@ on:
   workflow_call:
 
 name: Run npm test and lint
+env:
+  HUSKY: 0
 
 jobs:
   test:
