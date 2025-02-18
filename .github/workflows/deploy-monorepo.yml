@@ -25,6 +25,7 @@ name: Deploy to Amazon ECR
 env:
   ECR_REGISTRY: ${{ vars.AWS_ECR_REGISTRY }}
   SENTRY_ORG: "outfunnel"
+  HUSKY: 0
 
 jobs:
   deploy:
@@ -109,7 +110,7 @@ jobs:
         ref: master
         path: ./outfunnel-application
         token: ${{ secrets.PAT }}
-  
+
     - name: Update version in the yaml file
       if: ${{ !inputs.skip_deploy }}
       run: |
@@ -132,7 +133,7 @@ jobs:
           "${{ github.event.head_commit.message }}"
           https://github.com/${{ github.repository }}/commit/${{ github.sha }}
         destination_branch: "master"
-          
+
     - name: Post a message to Slack
       if: ${{ !inputs.skip_deploy }}
       uses: slackapi/slack-github-action@v1
@@ -146,7 +147,7 @@ jobs:
           }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  
+
     - name: Create Sentry release
       if: ${{ inputs.sentry_release }}
       uses: getsentry/action-release@v1
@@ -157,7 +158,7 @@ jobs:
       with:
         environment: live
         ignore_empty: true
-  
+
     - name: Post failure message to Slack
       if: ${{ failure() && !inputs.skip_deploy }}
       uses: slackapi/slack-github-action@v1

@@ -8,6 +8,8 @@ on:
         type: string
 
 name: Scheduled Dependency Update
+env:
+  HUSKY: 0
 
 jobs:
   ncu:
