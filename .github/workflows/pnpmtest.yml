@@ -1,5 +1,10 @@
 on:
   workflow_call:
+    secrets:
+      OF_REGISTRY_HOST:
+        required: true
+      OF_REGISTRY_TOKEN:
+        required: true
 
 name: Run pnpm test and lint
 env:
@@ -18,6 +23,11 @@ jobs:
       run: |
         echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" >> .npmrc
         echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+
+    - name: Debug .npmrc
+      run: |
+        echo "=== .npmrc contents (token masked) ==="
+        sed 's/_authToken=.*/_authToken=***MASKED***/' .npmrc
 
     - name: Read .nvmrc
       run: echo "NVMRC=$(cat .nvmrc)" >> $GITHUB_OUTPUT
