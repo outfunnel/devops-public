@@ -89,7 +89,9 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ env.ECR_REGISTRY }}/${{ needs.prepare.outputs.repository_name }}:${{ needs.prepare.outputs.image_tag }}-amd64
-        build-args: ${{ inputs.docker_build_args }}
+        build-args: |
+          HUSKY=0
+          ${{ inputs.docker_build_args }}
         cache-from: type=gha,scope=amd64
         cache-to: type=gha,mode=max,scope=amd64
 
@@ -133,7 +135,9 @@ jobs:
         platforms: linux/arm64
         push: true
         tags: ${{ env.ECR_REGISTRY }}/${{ needs.prepare.outputs.repository_name }}:${{ needs.prepare.outputs.image_tag }}-arm64
-        build-args: ${{ inputs.docker_build_args }}
+        build-args: |
+          HUSKY=0
+          ${{ inputs.docker_build_args }}
         cache-from: type=gha,scope=arm64
         cache-to: type=gha,mode=max,scope=arm64
 
