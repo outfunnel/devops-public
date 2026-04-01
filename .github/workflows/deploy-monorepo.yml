@@ -28,84 +28,170 @@ env:
   HUSKY: 0
 
 jobs:
-  deploy:
-    name: Deploy
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+      commit_title: ${{ steps.commit.outputs.commit_title }}
+    steps:
+    - name: Determine image tag
+      id: tag
+      run: echo "image_tag=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_OUTPUT
+
+    - name: Parse commit title
+      id: commit
+      run: |
+        echo "commit_title=$(echo $COMMIT_MESSAGE \
+          | sed -E 's/^\"|\"$//g' \
+          | awk -F '\\\\n' '{print $1}')" >> $GITHUB_OUTPUT
+      env:
+        COMMIT_MESSAGE: ${{ toJSON(github.event.head_commit.message) }}
+
+  build-amd64:
+    name: Build AMD64 (${{ matrix.app }})
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       matrix:
         app: ${{ fromJson(inputs.apps-to-deploy) }}
-
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Parse commit title
-      # toJSON adds surrounding quotes and escapes the ones inside
-      # Then surrounding quotes are stripped by sed
-      # Then awk splits by newline and takes the commit title
-      run: |
-        echo "COMMIT_TITLE=$(echo $COMMIT_MESSAGE \
-          | sed -E 's/^\"|\"$//g' \
-          | awk -F '\\\\n' '{print $1}')" >> $GITHUB_ENV
-      env:
-        COMMIT_MESSAGE: ${{ toJSON(github.event.head_commit.message) }}
+      uses: actions/checkout@v4
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1-node16
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
 
     - name: Login to Outfunnel NPM Registry
-      id: login-outfunnel-npm-registry
       run: |
         echo "" >> .npmrc
         echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" >> .npmrc
         echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
 
     - name: Login to Amazon ECR public
-      id: login-ecr-public
       if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
       run: |
         aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     - name: Login to Amazon ECR private
-      id: login-ecr-private
       if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
       run: |
         aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-    - name: Determine image tag
-      run: echo "IMAGE_TAG=$(date +'%Y-%m-%d')-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" >> $GITHUB_ENV
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Set up QEMU
-      id: qemu
-      uses: docker/setup-qemu-action@v2
+    - name: Build and push AMD64 image
+      uses: docker/build-push-action@v6
       with:
-        image: tonistiigi/binfmt:latest
-        platforms: all
+        context: .
+        file: ./packages/${{ matrix.app }}/Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.ECR_REGISTRY }}/${{ matrix.app }}:${{ needs.prepare.outputs.image_tag }}-amd64
+        build-args: |
+          HUSKY=0
+          ${{ inputs.docker_build_args }}
+        cache-from: type=gha,scope=${{ matrix.app }}-amd64
+        cache-to: type=gha,mode=max,scope=${{ matrix.app }}-amd64
+
+  build-arm64:
+    name: Build ARM64 (${{ matrix.app }})
+    needs: prepare
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        app: ${{ fromJson(inputs.apps-to-deploy) }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Login to Outfunnel NPM Registry
+      run: |
+        echo "" >> .npmrc
+        echo "@outfunnel:registry=https://${{ secrets.OF_REGISTRY_HOST }}/" >> .npmrc
+        echo "//${{ secrets.OF_REGISTRY_HOST }}/:_authToken=${{ secrets.OF_REGISTRY_TOKEN }}" >> .npmrc
+
+    - name: Login to Amazon ECR public
+      if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
+      run: |
+        aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Login to Amazon ECR private
+      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
+      run: |
+        aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
+    - name: Build and push ARM64 image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./packages/${{ matrix.app }}/Dockerfile
+        platforms: linux/arm64
+        push: true
+        tags: ${{ env.ECR_REGISTRY }}/${{ matrix.app }}:${{ needs.prepare.outputs.image_tag }}-arm64
+        build-args: |
+          HUSKY=0
+          ${{ inputs.docker_build_args }}
+        cache-from: type=gha,scope=${{ matrix.app }}-arm64
+        cache-to: type=gha,mode=max,scope=${{ matrix.app }}-arm64
+
+  merge-and-deploy:
+    name: Deploy (${{ matrix.app }})
+    needs: [prepare, build-amd64, build-arm64]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(inputs.apps-to-deploy) }}
+    env:
+      IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+      COMMIT_TITLE: ${{ needs.prepare.outputs.commit_title }}
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Login to Amazon ECR public
+      if: startsWith(env.ECR_REGISTRY, 'public.ecr.aws/')
       run: |
-        docker buildx build \
-        --file ./packages/${{ matrix.app }}/Dockerfile \
-        ${{ inputs.docker_build_args }} \
-        --tag $ECR_REGISTRY/${{ matrix.app }}:$IMAGE_TAG \
-        --tag $ECR_REGISTRY/${{ matrix.app }}:latest \
-        --platform linux/arm64,linux/amd64 \
-        --output type=image,push=true .
+        aws ecr-public get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-        echo "image=$ECR_REGISTRY/${{ matrix.app }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+    - name: Login to Amazon ECR private
+      if: ${{ !startsWith(env.ECR_REGISTRY, 'public.ecr.aws/') }}
+      run: |
+        aws ecr get-login-password --region ${{ vars.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create and push multi-arch manifest
+      run: |
+        docker buildx imagetools create \
+          --tag $ECR_REGISTRY/${{ matrix.app }}:$IMAGE_TAG \
+          --tag $ECR_REGISTRY/${{ matrix.app }}:latest \
+          $ECR_REGISTRY/${{ matrix.app }}:$IMAGE_TAG-amd64 \
+          $ECR_REGISTRY/${{ matrix.app }}:$IMAGE_TAG-arm64
 
     - name: Clone outfunnel-application repo
       if: ${{ !inputs.skip_deploy }}
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: outfunnel/outfunnel-application
         ref: master
